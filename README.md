@@ -23,3 +23,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 File is modified!
+
+A new line added for the branch fix
