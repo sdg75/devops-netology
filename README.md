@@ -1,22 +1,21 @@
-1. Полный хеш коммита aefead2207ef7e2aa5dc81a34aedf0cad4c32545, комментарий «Update CHANGELOG.md»
-2. Коммит 85024d3 соответствует тэгу «v0.12.23»
-3. У коммита b8d720 два родителя, т. к. это merge. Их хэши: 58dcac4b7 и ffbcf5581.
-4.
-b14b74c49 [Website] vmc provider links
-3f235065b Update CHANGELOG.md
-6ae64e247 registry: Fix panic when server is unreachable
-5c619ca1b website: Remove links to the getting started guide's old location
-06275647e Update CHANGELOG.md
-d5f9411f5 command: Fix bug when using terraform login on Windows
-4b6d06cc5 Update CHANGELOG.md
-dd01a3507 Update CHANGELOG.md
-
-5. 8c928e835
-
-6.
-52dbf94834cb970b510f2fba853a5b49ad9b1a46
-41ab0aef7a0fe030e84018973a64135b11abcd70
-66ebff90cdfaa6938f26f908c7ebad8d547fea17
-8364383c359a6b738a436d1b7745ccdce178df47
-
-7. Martin Atkins <mart@degeneration.co.uk>
+5. Виртуульных процессоров - 2, оперативная память - 1 GB, видеоконтроллер - 4MB VBoxVGA, накопитель 64Gb, сетевой адаптер Intel PRO/1000MT
+6. config.vm.provider "virtualbox" do |v|
+   	v.memory = 1024
+  	v.cpus = 2
+   end
+8. Переменная HISTSIZE, строка 427
+ ignoreboth это сокращение для 2х директив ignorespace and ignoredups, 
+    ignorespace - не сохранять команды начинающиеся с пробела, 
+    ignoredups - не сохранять команду, если такая уже имеется в истории
+9. {} задают список, строка man 228
+10. создать 100000 файлов - touch {0..100000}, соответственно удалить - rm {0..100000}.
+Команда touch {0..300000} не отработала, выдала сообщение об ошибке
+-bash: /usr/bin/touch: Argument list too long
+Слишком большой список аргументов.
+11.[[ -- это зарезервированное слово, усовершенствованный вариант команды test. bash исполняет [[ ........ ]] как один элемент, который имеет код возврата.
+ [[ -d /tmp ]] - логическое выражение, проверяет наличие каталога /tmp и возвращает статус наличия (0 или 1).
+12. mkdir /tmp/new_path_dir/
+    cp /bin/bash /tmp/new_path_dir/
+    PATH=/tmp/new_path_dir/:$PATH
+13. at - команда запускается в указанное время (в параметре)
+batch - запускается когда уровень загрузки системы снизится ниже 1.5
