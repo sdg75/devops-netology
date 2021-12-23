@@ -1,220 +1,175 @@
-1. node_exporter скачан и установлен, пробрасываем порт 9100 наружу:
-
-config.vm.network "forwarded_port", guest: 9100, host: 9100, host_ip: "127.0.0.1"
-
-
-unit-файл для node_exporter:
-
-
-root@vagrant:/etc# cat /lib/systemd/system/node_exporter.service
-
-
-[Unit]
-
-Description=Node Exporter
-
-DefaultDependencies=no
-
-
-[Service]
-
-ExecStart=/home/vagrant/node_exporter-1.3.1.linux-amd64/node_exporter $OPTIONS
-
-ExecStop=/bin/kill -HUP $MAINPID
-
-EnvironmentFile=-/etc/node_exporter
-
-
-[Install]
-
-WantedBy=multi-user.target
-
-
-Используя внешний файл опций, включим ntp-collector, который по-умолчанию выключен:
-
-root@vagrant:/etc# cat /etc/node_exporter
-
-OPTIONS="--collector.ntp"
-
-
-Поместим в автозагрузку:
-
-root@vagrant:/etc# systemctl enable node_exporter
-
-
-Запустим node_exporter:
-
-root@vagrant:/etc# systemctl start node_exporter
-
-
-Проверим статус:
-
-root@vagrant:/etc# systemctl status node_exporter
-
-● node_exporter.service - Node Exporter
-
-     Loaded: loaded (/lib/systemd/system/node_exporter.service; enabled; vendor preset: enabled)
-
-     Active: active (running) since Mon 2021-12-13 18:22:32 UTC; 5min ago
-
-   Main PID: 2344 (node_exporter)
-
-      Tasks: 5 (limit: 1071)
-
-     Memory: 4.9M
-
-     CGroup: /system.slice/node_exporter.service
-
-             └─2344 /home/vagrant/node_exporter-1.3.1.linux-amd64/node_exporter --collector.ntp
-
-
-Перезапуск и остановка также работают:
-
-root@vagrant:/etc# systemctl restart node_exporter
-
-root@vagrant:/etc# systemctl stop node_exporter
-
-
-2.CPU:
-
-
-node_cpu_seconds_total{cpu="0",mode="idle"} 5727.89
-
-node_cpu_seconds_total{cpu="0",mode="iowait"} 2.09
-
-node_cpu_seconds_total{cpu="0",mode="irq"} 0
-
-node_cpu_seconds_total{cpu="0",mode="nice"} 0.1
-
-node_cpu_seconds_total{cpu="0",mode="softirq"} 1.68
-
-node_cpu_seconds_total{cpu="0",mode="steal"} 0
-
-node_cpu_seconds_total{cpu="0",mode="system"} 61.82
-
-node_cpu_seconds_total{cpu="0",mode="user"} 42.27
-
-
-RAM:
-
-node_memory_MemAvailable_bytes 6.29538816e+08
-
-node_memory_MemFree_bytes
-
-
-HDD:
-
-node_disk_io_time_seconds_total{device="sda"} 14.152000000000001
-
-node_disk_read_time_seconds_total{device="sda"} 8.91
-
-node_disk_write_time_seconds_total{device="sda"} 2.624
-
-
-NIC:
-
-node_network_receive_bytes_total{device="eth0"} 1.367848e+06
-
-node_network_transmit_bytes_total{device="eth0"} 557302
-
-node_network_receive_errs_total{device="eth0"} 0
-
-node_network_transmit_errs_total{device="eth0"} 0
-
-
-3. Пакет Netdata установлен, порт 19999 проброшен на хостовую машину.
-
-root@vagrant:/etc# lsof -i :19999
-
-COMMAND PID    USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-
-netdata 704 netdata    4u  IPv4  25019      0t0  TCP *:19999 (LISTEN)
-
-
-В браузере на хостовой машине:
-
-<img src="./netdata.jpg" alt="">
-
-
-4. Ответ - да
-
-root@vagrant:/etc# dmesg | grep virt
-
-[    0.010442] CPU MTRRs all blank - virtualized system.
-
-[    0.191148] Booting paravirtualized kernel on KVM
-
-[    3.156830] systemd[1]: Detected virtualization oracle.
-
-
-5. fs.nr_open - Лимит на количество открытых дескрипторов.
-
-root@vagrant:/etc# cat /proc/sys/fs/nr_open
-
-1048576
-
-
-Начать стоит с проверки ulimit -a и ulimit -aH в shell'е. Это быстро покажет текущие "мягкие" и (второй вызов) "жесткие" ограничения. При помощи ulimit можно открутить мягкие ограничения до пределов жестких. Следует понимать, что ulimit меняет только текущие лимиты, для шелла и всех программ, запущенных в этом шелле, поэтому после завершения сессии или даже в другом окне терминала значения останутся прежними.
-
-Следующее место задания ограничений, на этот раз постоянных — это /etc/security/limits.conf и каталог /etc/security/limits.d/, ограничение называется nofile. Редактировать (а, иногда, и смотреть) эти файлы может только суперпользователь ("root"). Там задаются ограничения на отдельных пользователей или группы, применяемые на всю сессию данного пользователя, или всех пользователей определенной группы.
-
-И наконец, есть "системное ограничение", задаваемое через sysctl - это fs.nr_open:
-
-/sbin/sysctl -n fs.nr_open
-
-ему же соответствует файл /proc/sys/fs/nr_open
-
-
-6. Ответ:
-
-root@vagrant:~# screen
-
-root@vagrant:~# unshare -f --pid --mount-proc /usr/bin/sleep 1h
-
-root@vagrant:/home/vagrant# root@vagrant:/home/vagrant# ps aux | grep sleep
-
-root        1165  0.0  0.0   8080   524 pts/1    S+   19:24   0:00 unshare -f --pid --mount-proc /usr/bin/sleep 1h
-
-root        1166  0.0  0.0   8076   532 pts/1    S+   19:24   0:00 /usr/bin/sleep 1h
-
-
-Переключимся в созданный namespace и посмотрим список процессов:
-
-root@vagrant:~# nsenter --target 1166 --pid --mount
-
-root@vagrant:/# ps aux
-
-USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-
-root           1  0.0  0.0   8076   532 pts/1    S+   19:24   0:00 /usr/bin/sleep 1h
-
-root           2  0.0  0.3   9836  3984 pts/0    S    19:26   0:00 -bash
-
-root          11  0.0  0.3  11492  3368 pts/0    R+   19:26   0:00 ps aux
-
-
-7. Конструкция :(){ :|:& };: определяет функцию с именем : , которая порождает саму себя (дважды, один канал переходит в другой) и создает фон.
-
-Это так называемая forkbomb - плодит бесчисленное множество процессов, загружая центральный процессор.
-
-При запуске на некоторое время теряется контроль над системой - экран забит сообщениями
-
--bash: fork: Resource temporarily unavailable
-
-Через некоторое время система стабилизируется и команду можно прервать.
-
-
-Вывод dmesg:
-
-[  783.251487] cgroup: fork rejected by pids controller in /user.slice/user-1000.slice/session-1.scope
-
-Сработал механизм ограничения числа процессов, создаваемых пользователем:
-
-vagrant@vagrant:~$ cat /sys/fs/cgroup/pids/user.slice/user-1000.slice/pids.max
-
-2356
-
-
-С помощью команды ulimit и конфигурационного файла /etc/security/limits.conf можно ограничить процессам доступ к системным ресурсам, таким как память, файлы и процессор.
-
-Например, ulimit -u NUMBER - ограничение максимального количества запущенных процессов числом NUMBER.
+1. Изучно. Интересное решение.
+
+2. Так как hardlink это ссылка на тот же самый файл c тем же inode, то права доступа и владелец будут идентичны.
+
+3. root@vagrant:/home/vagrant# lsblk
+NAME                 MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda                    8:0    0   64G  0 disk
+├─sda1                 8:1    0  512M  0 part /boot/efi
+├─sda2                 8:2    0    1K  0 part
+└─sda5                 8:5    0 63.5G  0 part
+  ├─vgvagrant-root   253:0    0 62.6G  0 lvm  /
+  └─vgvagrant-swap_1 253:1    0  980M  0 lvm  [SWAP]
+sdb                    8:16   0  2.5G  0 disk
+sdc                    8:32   0  2.5G  0 disk
+
+4. Создаем первый раздел:
+Command (m for help): n
+Partition type
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended (container for logical partitions)
+Select (default p): p
+Partition number (1-4, default 1): 1
+First sector (2048-5242879, default 2048):
+Last sector, +/-sectors or +/-size{K,M,G,T,P} (2048-5242879, default 5242879): +2G
+
+Created a new partition 1 of type 'Linux' and of size 2 GiB.
+
+Аналогично создаем второй раздел:
+Command (m for help): n
+Partition type
+   p   primary (1 primary, 0 extended, 3 free)
+   e   extended (container for logical partitions)
+Select (default p): p
+Partition number (2-4, default 2): 2
+First sector (4196352-5242879, default 4196352):
+Last sector, +/-sectors or +/-size{K,M,G,T,P} (4196352-5242879, default 5242879):
+
+Created a new partition 2 of type 'Linux' and of size 511 MiB.
+
+Записываем изменения на диск:
+Command (m for help): w
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Syncing disks.
+
+5.root@vagrant:/home/vagrant#  sfdisk --dump /dev/sdb|sfdisk --force /dev/sdc
+Checking that no-one is using this disk right now ... OK
+
+Disk /dev/sdc: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+Disk model: VBOX HARDDISK
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+>>> Script header accepted.
+>>> Script header accepted.
+>>> Script header accepted.
+>>> Script header accepted.
+>>> Created a new DOS disklabel with disk identifier 0x67808872.
+/dev/sdc1: Created a new partition 1 of type 'Linux' and of size 2 GiB.
+/dev/sdc2: Created a new partition 2 of type 'Linux' and of size 511 MiB.
+/dev/sdc3: Done.
+
+New situation:
+Disklabel type: dos
+Disk identifier: 0x67808872
+
+Device     Boot   Start     End Sectors  Size Id Type
+/dev/sdc1          2048 4196351 4194304    2G 83 Linux
+/dev/sdc2       4196352 5242879 1046528  511M 83 Linux
+
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Syncing disks.
+
+6. root@vagrant:/home/vagrant# root@vagrant:/home/vagrant# mdadm --create /dev/md1 -l 1 -n 2 /dev/sd{b1,c1}
+mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+Continue creating array? y
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md1 started.
+
+7. root@vagrant:/home/vagrant# mdadm --create /dev/md0 -l 0 -n 2 /dev/sd{b2,c2}
+mdadm: chunk size defaults to 512K
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+
+8. root@vagrant:/home/vagrant# pvcreate /dev/md1 /dev/md0
+  Physical volume "/dev/md1" successfully created.
+  Physical volume "/dev/md0" successfully created.
+
+9. root@vagrant:/home/vagrant# vgcreate vg1 /dev/md1 /dev/md0
+  Volume group "vg1" successfully created
+
+10.root@vagrant:/home/vagrant# lvcreate -L 100M vg1 /dev/md0
+  Logical volume "lvol0" created.
+
+11.root@vagrant:/home/vagrant#  mkfs.ext4 /dev/vg1/lvol0
+mke2fs 1.45.5 (07-Jan-2020)
+Creating filesystem with 25600 4k blocks and 25600 inodes
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (1024 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+12. root@vagrant:/home/vagrant# mkdir /tmp/new
+root@vagrant:/home/vagrant# mount /dev/vg1/lvol0 /tmp/new
+
+13. root@vagrant:/home/vagrant# wget https://mirror.yandex.ru/ubuntu/ls-lR.gz -O /tmp/new/test.gz
+--2021-12-23 13:50:24--  https://mirror.yandex.ru/ubuntu/ls-lR.gz
+Resolving mirror.yandex.ru (mirror.yandex.ru)... 213.180.204.183
+Connecting to mirror.yandex.ru (mirror.yandex.ru)|213.180.204.183|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 21668357 (21M) [application/octet-stream]
+Saving to: ‘/tmp/new/test.gz’
+
+/tmp/new/test.gz             100%[============================================>]  20.66M  3.25MB/s    in 6.4s
+
+2021-12-23 13:50:30 (3.24 MB/s) - ‘/tmp/new/test.gz’ saved [21668357/21668357]
+
+14. root@vagrant:/home/vagrant# lsblk
+NAME                 MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+sda                    8:0    0   64G  0 disk
+├─sda1                 8:1    0  512M  0 part  /boot/efi
+├─sda2                 8:2    0    1K  0 part
+└─sda5                 8:5    0 63.5G  0 part
+  ├─vgvagrant-root   253:0    0 62.6G  0 lvm   /
+  └─vgvagrant-swap_1 253:1    0  980M  0 lvm   [SWAP]
+sdb                    8:16   0  2.5G  0 disk
+├─sdb1                 8:17   0    2G  0 part
+│ └─md1                9:1    0    2G  0 raid1
+└─sdb2                 8:18   0  511M  0 part
+  └─md0                9:0    0 1018M  0 raid0
+    └─vg1-lvol0      253:2    0  100M  0 lvm   /tmp/new
+sdc                    8:32   0  2.5G  0 disk
+├─sdc1                 8:33   0    2G  0 part
+│ └─md1                9:1    0    2G  0 raid1
+└─sdc2                 8:34   0  511M  0 part
+  └─md0                9:0    0 1018M  0 raid0
+    └─vg1-lvol0      253:2    0  100M  0 lvm   /tmp/new
+
+15. root@vagrant:/home/vagrant# gzip -t /tmp/new/test.gz
+root@vagrant:/home/vagrant# echo $?
+0
+
+16. root@vagrant:/home/vagrant# root@vagrant:/home/vagrant# pvmove /dev/md0
+  /dev/md0: Moved: 20.00%
+  /dev/md0: Moved: 100.00%
+
+17. root@vagrant:/home/vagrant# mdadm /dev/md1 --fail /dev/sdc1
+mdadm: set /dev/sdc1 faulty in /dev/md1
+
+18. root@vagrant:/home/vagrant# mdadm /dev/md1 --fail /dev/sdc1
+mdadm: set /dev/sdc1 faulty in /dev/md1
+root@vagrant:/home/vagrant# dmesg | grep md1
+[ 3693.686895] md/raid1:md1: not clean -- starting background reconstruction
+[ 3693.686897] md/raid1:md1: active with 2 out of 2 mirrors
+[ 3693.686914] md1: detected capacity change from 0 to 2144337920
+[ 3693.690360] md: resync of RAID array md1
+[ 3704.118092] md: md1: resync done.
+[ 5943.961741] md/raid1:md1: Disk failure on sdc1, disabling device.
+               md/raid1:md1: Operation continuing on 1 devices.
+
+19. root@vagrant:/home/vagrant# gzip -t /tmp/new/test.gz
+root@vagrant:/home/vagrant# echo $?
+0
+
+20.PS C:\Users\User\.vagrant.d> vagrant destroy
+    default: Are you sure you want to destroy the 'default' VM? [y/N] y
+==> default: Forcing shutdown of VM...
+==> default: Destroying VM and associated drives...
