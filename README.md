@@ -8,10 +8,11 @@ location: https://stackoverflow.com/questions
 В данном случае это https://stackoverflow.com/questions
 
 **2.** Полученный HTTP код
+```
 Request URL: http://stackoverflow.com/
 Request Method: GET
 Status Code: 301 Moved Permanently
-
+```
 Дольше всего обрабатывался запрос на открытие URL https://stackoverflow.com - 687ms
 
 <img src="./net1.jpg" alt="">
