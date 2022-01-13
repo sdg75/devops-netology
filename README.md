@@ -1,82 +1,135 @@
-# Домашнее задание к занятию "4.1. Командная оболочка Bash: Практические навыки"
+# Домашнее задание к занятию "4.2. Использование Python для решения типовых DevOps задач"
 
 ## Обязательная задача 1
 
 Есть скрипт:
-```bash
-a=1
-b=2
-c=a+b
-d=$a+$b
-e=$(($a+$b))
+```python
+#!/usr/bin/env python3
+a = 1
+b = '2'
+c = a + b
 ```
 
-Какие значения переменным c,d,e будут присвоены? Почему?
-
-| Переменная  | Значение | Обоснование |
-| ------------- | ------------- | ------------- |
-| `c`  | a+b  | в данном случае a и b - это не значения переменных, а просто символы |
-| `d`  | 1+2  | здесь есть ссылка на значение переменных a и b, но отсутствует приведение к числовому типу данных, и + в данном случае не операция сложения, а просто символ |
-| `e`  | 3  | значения переменных приведены к числовому типу данных и применена опарация сложения |
-
+### Вопросы:
+| Вопрос  | Ответ |
+| ------------- | ------------- |
+| Какое значение будет присвоено переменной `c`?  | ошибка несоответствия типов переменных |
+| Как получить для переменной `c` значение 12?  | c=str(a)+b  |
+| Как получить для переменной `c` значение 3?  | c=a+int(b)  |
 
 ## Обязательная задача 2
-На нашем локальном сервере упал сервис и мы написали скрипт, который постоянно проверяет его доступность, записывая дату проверок до тех пор, пока сервис не станет доступным (после чего скрипт должен завершиться). В скрипте допущена ошибка, из-за которой выполнение не может завершиться, при этом место на Жёстком Диске постоянно уменьшается. Что необходимо сделать, чтобы его исправить:
-```bash
-while ((1==1)
-do
-	curl https://localhost:4757
-	if (($? != 0))
-	then
-		date >> curl.log
-	fi
-done
+Мы устроились на работу в компанию, где раньше уже был DevOps Engineer. Он написал скрипт, позволяющий узнать, какие файлы модифицированы в репозитории, относительно локальных изменений. Этим скриптом недовольно начальство, потому что в его выводе есть не все изменённые файлы, а также непонятен полный путь к директории, где они находятся. Как можно доработать скрипт ниже, чтобы он исполнял требования вашего руководителя?
+
+```python
+#!/usr/bin/env python3
+
+import os
+
+bash_command = ["cd ~/netology/sysadm-homeworks", "git status"]
+result_os = os.popen(' && '.join(bash_command)).read()
+is_change = False
+for result in result_os.split('\n'):
+    if result.find('modified') != -1:
+        prepare_result = result.replace('\tmodified:   ', '')
+        print(prepare_result)
+        break
 ```
-Ответ: В скрипте пропущена закрывающая круглая скобка в строке оператора while и отсутствует условие выхода из бесконечного цикла, например, седьмой строкой можно вставить else break
-
-## Обязательная задача 3
-
-Необходимо написать скрипт, который проверяет доступность трёх IP: `192.168.0.1`, `173.194.222.113`, `87.250.250.242` по `80` порту и записывает результат в файл `log`. Проверять доступность необходимо пять раз для каждого узла.
 
 ### Ваш скрипт:
-```bash
-#!/usr/bin/env bash
-hosts=(192.168.0.1 173.194.222.113 87.250.250.24)
-for i in {1..5}
-do
-date >>hosts.log
-    for h in ${hosts[@]}
-    do
-        curl -Is --connect-timeout 3 $h:80 >/dev/null
-        if (($?==0))
-        then
-         status=started
-        else
-         status=error
-        fi
-        echo "    check" $h status=$status >>hosts.log
-    done
-done
+```
+#!/usr/bin/env python3
+
+import os
+
+bash_command = ["cd ~/netology-sysadm", "git status"]
+result_os = os.popen(' && '.join(bash_command)).read()
+#is_change = False
+for result in result_os.split('\n'):
+    if result.find('modified') != -1:
+        prepare_result = result.replace('\tmodified:   ', '')
+        print(prepare_result)
+#        break
+```
+
+### Вывод скрипта при запуске при тестировании:
+```
+vagrant@vagrant:~$ ./1.py
+first.md
+second.md
+third.md
+```
+
+## Обязательная задача 3
+1. Доработать скрипт выше так, чтобы он мог проверять не только локальный репозиторий в текущей директории, а также умел воспринимать путь к репозиторию, который мы передаём как входной параметр. Мы точно знаем, что начальство коварное и будет проверять работу этого скрипта в директориях, которые не являются локальными репозиториями.
+
+### Ваш скрипт:
+```
+#!/usr/bin/env python3
+
+import os
+import sys
+
+path = os.getcwd()
+if len(sys.argv)>1:
+    path = sys.argv[1]
+bash_command = ["cd "+path, "git status 2>&1"]
+result_os = os.popen(' && '.join(bash_command)).read()
+for result in result_os.split('\n'):
+    if result.find('fatal') != -1:
+        print('Каталог +path+' не является GIT репозиторием')
+    elif result.find('modified') != -1:
+        prepare_result = result.replace('\tmodified:   ', '')
+        print(path+prepare_result)
+```
+
+### Вывод скрипта при запуске при тестировании:
+```
+vagrant@vagrant:~$ ./1.py ~/devops-netology
+/home/vagrant/devops-netology/first.md
+/home/vagrant/devops-netology/second.md
+/home/vagrant/devops-netology/third.md
+vagrant@vagrant:~$ ./1.py
+Каталог /home/vagrant не является GIT репозиторием
+vagrant@vagrant:~$ cd devops-netology/
+vagrant@vagrant:~/devops-netology$ ../1.py
+/home/vagrant/devops-netology/first.md
+/home/vagrant/devops-netology/second.md
+/home/vagrant/devops-netology/third.md
+vagrant@vagrant:~/devops-netology$
 ```
 
 ## Обязательная задача 4
-Необходимо дописать скрипт из предыдущего задания так, чтобы он выполнялся до тех пор, пока один из узлов не окажется недоступным. Если любой из узлов недоступен - IP этого узла пишется в файл error, скрипт прерывается.
+1. Наша команда разрабатывает несколько веб-сервисов, доступных по http. Мы точно знаем, что на их стенде нет никакой балансировки, кластеризации, за DNS прячется конкретный IP сервера, где установлен сервис. Проблема в том, что отдел, занимающийся нашей инфраструктурой очень часто меняет нам сервера, поэтому IP меняются примерно раз в неделю, при этом сервисы сохраняют за собой DNS имена. Это бы совсем никого не беспокоило, если бы несколько раз сервера не уезжали в такой сегмент сети нашей компании, который недоступен для разработчиков. Мы хотим написать скрипт, который опрашивает веб-сервисы, получает их IP, выводит информацию в стандартный вывод в виде: <URL сервиса> - <его IP>. Также, должна быть реализована возможность проверки текущего IP сервиса c его IP из предыдущей проверки. Если проверка будет провалена - оповестить об этом в стандартный вывод сообщением: [ERROR] <URL сервиса> IP mismatch: <старый IP> <Новый IP>. Будем считать, что наша разработка реализовала сервисы: `drive.google.com`, `mail.google.com`, `google.com`.
 
 ### Ваш скрипт:
-```bash
-#!/usr/bin/env bash
-hosts=(192.168.0.1 173.194.222.113 87.250.250.24)
-while ((1==1))
-do
-    for h in ${hosts[@]}
-    do
-        curl -Is --connect-timeout 3 $h:80 >/dev/null
-        if (($?!=0))
-        then
-            echo $h status=error >>hosts.log
-            exit
-        fi
-   done
-done
+```
+#!/usr/bin/env python3
 
+import socket
+import time
+
+host1 = 'drive.google.com'
+host2 = 'mail.google.com'
+host3 = 'google.com'
+hosts = {host1:socket.gethostbyname(host1), host2:socket.gethostbyname(host2), host3:socket.gethostbyname(host3),}
+
+print('*** IP checking started ***')
+print(hosts)
+
+while 1==1:
+  for host in hosts:
+    ip = socket.gethostbyname(host)
+    if ip != hosts[host]:
+      print('[ERROR] ' + str(host) +' IP mistmatch: '+hosts[host]+' '+ip)
+      hosts[host]=ip
+  time.sleep(1)
+```
+
+### Вывод скрипта при запуске при тестировании:
+```
+vagrant@vagrant:~$ ./2.py
+*** IP checking started ***
+{'drive.google.com': '142.250.150.194', 'mail.google.com': '216.58.210.133', 'google.com': '216.58.210.174'}
+[ERROR] mail.google.com IP mistmatch: 216.58.210.133 216.58.210.165
+[ERROR] drive.google.com IP mistmatch: 142.250.150.194 173.194.73.194
 ```
