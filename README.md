@@ -29,7 +29,37 @@
 
 ### Ваш скрипт:
 ```python
-???
+#!/usr/bin/env python3
+
+import socket
+import time
+import json
+import yaml
+
+host1 = 'drive.google.com'
+host2 = 'mail.google.com'
+host3 = 'google.com'
+hosts = {host1:socket.gethostbyname(host1), host2:socket.gethostbyname(host2), host3:socket.gethostbyname(host3),}
+
+print('*** IP checking started ***')
+print(hosts)
+
+while 1==1:
+  for host in hosts:
+    ip = socket.gethostbyname(host)
+    if ip != hosts[host]:
+      print('[ERROR] ' + str(host) +' IP mistmatch: '+hosts[host]+' '+ip)
+      hosts[host]=ip
+      # Вывод json файла
+      with open(host+".json",'w') as jsnf:
+          json_data = json.dumps({host : ip})
+          jsnf.write(json_data)
+      # Вывод yaml файла
+      with open(host+".yaml",'w') as ymlf:
+          yaml_data = yaml.dump([{host : ip}])
+          ymlf.write('---\n')
+          ymlf.write(yaml_data)
+  time.sleep(1)
 ```
 
 ### Вывод скрипта при запуске при тестировании:
