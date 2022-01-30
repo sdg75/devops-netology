@@ -1,103 +1,175 @@
-# Домашнее задание к занятию "4.3. Языки разметки JSON и YAML"
+# Домашнее задание к занятию "5.3. Введение. Экосистема. Архитектура. Жизненный цикл Docker контейнера"
 
 
 ## Обязательная задача 1
-Мы выгрузили JSON, который получили через API запрос к нашему сервису:
-```json
-    { "info" : "Sample JSON output from our service\t",
-        "elements" :[
-            { "name" : "first",
-            "type" : "server",
-            "ip" : 7175 
-            }
-            { "name" : "second",
-            "type" : "proxy",
-            "ip : 71.78.22.43
-            }
-        ]
-    }
-```
-  Нужно найти и исправить все ошибки, которые допускает наш сервис
+Сценарий выполения задачи:
 
-В девятой строке не хватает кавычек:
-```json
-"ip" : "71.78.22.43"
+создайте свой репозиторий на https://hub.docker.com;
+выберете любой образ, который содержит веб-сервер Nginx;
+создайте свой fork образа;
+реализуйте функциональность: запуск веб-сервера в фоне с индекс-страницей, содержащей HTML-код ниже:
+<html>
+<head>
+Hey, Netology
+</head>
+<body>
+<h1>I’m DevOps Engineer!</h1>
+</body>
+</html>
+Опубликуйте созданный форк в своем репозитории и предоставьте ответ в виде ссылки на https://hub.docker.com/username_repo.
+
+### Ответ
+
+Подготовим Dockerfile вида:
 ```
+vagrant@vagrant:~$ cat ./Dockerfile
+FROM nginx:alpine
+
+RUN rm -rf /usr/share/nginx/html/*
+
+COPY index.html /usr/share/nginx/html/
+
+EXPOSE 80
+
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
+```
+Соберем Docker образ
+```
+vagrant@vagrant:~$ docker build -t d7k5/nginx:alpine .
+```
+Залогинимся в Docker и запушим полученный образ:
+```
+vagrant@vagrant:~$ docker login -u d7k5
+vagrant@vagrant:~$ docker push d7k5/nginx:alpine
+```
+Результат доступен по ссылке:
+https://hub.docker.com/repository/docker/d7k5/nginx
 
 ## Обязательная задача 2
-В прошлый рабочий день мы создавали скрипт, позволяющий опрашивать веб-сервисы и получать их IP. К уже реализованному функционалу нам нужно добавить возможность записи JSON и YAML файлов, описывающих наши сервисы. Формат записи JSON по одному сервису: `{ "имя сервиса" : "его IP"}`. Формат записи YAML по одному сервису: `- имя сервиса: его IP`. Если в момент исполнения скрипта меняется IP у сервиса - он должен так же поменяться в yml и json файле.
+Посмотрите на сценарий ниже и ответьте на вопрос: "Подходит ли в этом сценарии использование Docker контейнеров или лучше подойдет виртуальная машина, физическая машина? Может быть возможны разные варианты?"
 
-### Ваш скрипт:
-```python
-#!/usr/bin/env python3
+Детально опишите и обоснуйте свой выбор.
 
-import socket
-import time
-import json
-import yaml
+--
 
-host1 = 'drive.google.com'
-host2 = 'mail.google.com'
-host3 = 'google.com'
-hosts = {host1:socket.gethostbyname(host1), host2:socket.gethostbyname(host2), host3:socket.gethostbyname(host3),}
+Сценарий:
+- Высоконагруженное монолитное java веб-приложение;
+- Nodejs веб-приложение;
+- Мобильное приложение c версиями для Android и iOS;
+- Шина данных на базе Apache Kafka;
+- Elasticsearch кластер для реализации логирования продуктивного веб-приложения - три ноды elasticsearch, два logstash и две ноды kibana;
+- Мониторинг-стек на базе Prometheus и Grafana;
+- MongoDB, как основное хранилище данных для java-приложения;
+- Gitlab сервер для реализации CI/CD процессов и приватный (закрытый) Docker Registry.
 
-print('*** IP checking started ***')
-print(hosts)
+### Ответ
+- Высоконагруженное монолитное java веб-приложение.
 
-while 1==1:
-  for host in hosts:
-    ip = socket.gethostbyname(host)
-    if ip != hosts[host]:
-      print('[ERROR] ' + str(host) +' IP mistmatch: '+hosts[host]+' '+ip)
-      hosts[host]=ip
-      # Вывод json файла
-      with open(host+".json",'w') as jsnf:
-          json_data = json.dumps({host : ip})
-          jsnf.write(json_data)
-      # Вывод yaml файла
-      with open(host+".yaml",'w') as ymlf:
-          yaml_data = yaml.dump([{host : ip}])
-          ymlf.write('---\n')
-          ymlf.write(yaml_data)
-  time.sleep(1)
+Монолитное - следовательно в микросерверах не реализуемо без изменения кода,
+высоконагруженное - необходим физический доступ к ресурсами, без использования гипервизора.
+В данном сценарии лучше подойдет физическая машина.
+
+- Nodejs веб-приложение.
+
+Веб-приложения хорошо реализуются в микросерверах.
+В данном сценарии использование Docker вполне оправданно.
+
+- Мобильное приложение c версиями для Android и iOS.
+
+Приложения для Android и iOS - разные среды исполнения.
+В данном сценарии целесообразно использовать виртуальную машину.
+
+- Шина данных на базе Apache Kafka.
+
+Kafka неплохо реализуется на микросерверах. Есть готовые Docker образы.
+В данном случае решением будет Docker.
+
+- Elasticsearch кластер для реализации логирования продуктивного веб-приложения - три ноды elasticsearch, два logstash и две ноды kibana.
+
+Вполне реализуемо на Docker, но с точки зрения отказоустойчивости кластер лучше реализовать на виртуальных машинах.
+
+- Мониторинг-стек на базе Prometheus и Grafana.
+- 
+Prometheus и Grafana хорошо реализуются на Docker.
+
+- MongoDB, как основное хранилище данных для java-приложения.
+- 
+Как для основного хранилища данных в данном случае Docker не подходит.
+Решением будет виртуальная машина или физический сервер в зависимости от нагрузки.
+
+- Gitlab сервер для реализации CI/CD процессов и приватный (закрытый) Docker Registry.
+
+Для хранения образов Docker и системы версионирования случае лучше подойдет виртуальная машина. 
+
+
+## Обязательная задача 3
+- Запустите первый контейнер из образа centos c любым тэгом в фоновом режиме, подключив папку /data из текущей рабочей директории на хостовой машине в /data контейнера;
+- Запустите второй контейнер из образа debian в фоновом режиме, подключив папку /data из текущей рабочей директории на хостовой машине в /data контейнера;
+- Подключитесь к первому контейнеру с помощью docker exec и создайте текстовый файл любого содержания в /data;
+- Добавьте еще один файл в папку /data на хостовой машине;
+- Подключитесь во второй контейнер и отобразите листинг и содержание файлов в /data контейнера.
+
+### Ответ
+Загрузим docker-образ Centos:
+```
+vagrant@vagrant:~$ docker pull centos
+Using default tag: latest
+latest: Pulling from library/centos
+a1d0c7532777: Pull complete
+Digest: sha256:a27fd8080b517143cbbbab9dfb7c8571c40d67d534bbdee55bd6c473f432b177
+Status: Downloaded newer image for centos:latest
+docker.io/library/centos:latest
 ```
 
-### Вывод скрипта при запуске при тестировании:
+Загрузим docker-образ Debian:
 ```
-*** IP checking started ***
-{'drive.google.com': '74.125.205.194', 'mail.google.com': '216.58.210.165', 'google.com': '216.58.210.174'}
-[ERROR] google.com IP mistmatch: 216.58.210.142 216.58.210.174
-[ERROR] mail.google.com IP mistmatch: 216.58.210.133 216.58.210.165
-[ERROR] drive.google.com IP mistmatch: 173.194.222.194 173.194.220.194
+vagrant@vagrant:~$ docker pull debian
+Using default tag: latest
+latest: Pulling from library/debian
+0c6b8ff8c37e: Pull complete
+Digest: sha256:fb45fd4e25abe55a656ca69a7bef70e62099b8bb42a279a5e0ea4ae1ab410e0d
+Status: Downloaded newer image for debian:latest
+docker.io/library/debian:latest
 ```
-
-### json-файл(ы), который(е) записал ваш скрипт:
-```json
-vagrant@vagrant:~$ cat ./google.com.json
-{"google.com": "216.58.210.174"}
+Запустим контейнер CentOS:
 ```
-```json
-vagrant@vagrant:~$ cat ./mail.google.com.json
-{"mail.google.com": "216.58.210.165"}
+vagrant@vagrant:~$ docker run -itdv /home/vagrant/data:/data:rw centos /bin/bash
+9cde2e79ffe87b4b276fec4308993de65c09052e9e0775849045bdc6135b5b62
 ```
-```json
-vagrant@vagrant:~$ cat ./drive.google.com.json
-{"drive.google.com": "173.194.220.194"}
+Запустим контейнер Debian:
 ```
-
-### yml-файл(ы), который(е) записал ваш скрипт:
-```yaml
-vagrant@vagrant:~$ cat ./google.com.yaml
----
-- google.com: 216.58.210.174
+vagrant@vagrant:~$ docker run -itdv /home/vagrant/data:/data:rw debian /bin/bash
+ae00e61085965966fd7738a50783f6f617ac63d2d80ff2da6caac2ae65e926ea
 ```
-```yaml
-vagrant@vagrant:~$ cat ./mail.google.com.yaml
----
-- mail.google.com: 216.58.210.165
+Проверим статус:
 ```
-```yaml
-vagrant@vagrant:~$ cat ./drive.google.com.yaml
----
-- drive.google.com: 173.194.220.194
+vagrant@vagrant:~$ docker ps
+CONTAINER ID   IMAGE     COMMAND       CREATED              STATUS              PORTS     NAMES
+ae00e6108596   debian    "/bin/bash"   About a minute ago   Up About a minute             hardcore_curie
+9cde2e79ffe8   centos    "/bin/bash"   About a minute ago   Up About a minute             hungry_heyrovsky
+```
+Подключимся к контейнеру Centos и создадим файл:
+```
+vagrant@vagrant:~$ docker exec -it 9cde2e79ffe8 /bin/bash
+[root@9cde2e79ffe8 /]# touch /data/first.file
+[root@9cde2e79ffe8 /]# echo "first string" >> /data/first.file
+[root@9cde2e79ffe8 /]# cat /data/first.file
+first string
+```
+Добавим еще один файл в папку /data на хостовой машине:
+```
+vagrant@vagrant:~$ touch ./data/second.file
+vagrant@vagrant:~$ echo "another string" >> ./data/second.file
+vagrant@vagrant:~$ cat  ./data/second.file
+another string
+```
+Подключимся во второй контейнер и отобразим листинг и содержание файлов в /data контейнера:
+```
+vagrant@vagrant:~$ docker exec -it ae00e6108596 /bin/bash
+root@ae00e6108596:/# ls /data
+first.file  second.file
+root@ae00e6108596:/# cat /data/first.file
+first string
+root@ae00e6108596:/# cat /data/second.file
+another string
 ```
