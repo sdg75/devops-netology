@@ -79,7 +79,7 @@ CREATE DATABASE
 ```
 root@4b26a36c218f:/# psql -U postgres -f /var/lib/postgresql/backup/test_dump.sql test_database
 ```
-Подключаемся к БД и мотрим список таблиц:
+Подключаемся к БД и смотрим список таблиц:
 ```
 postgres=# \c test_database
 Password:
@@ -117,7 +117,7 @@ test_database=# select avg_width from pg_stats where tablename='orders';
 Можно ли было изначально исключить "ручное" разбиение при проектировании таблицы orders?
 
 ### Ответ
-Пересоздадим таблицу orders как партицированную:
+Пересоздадим таблицу orders как секционированную:
 ```
 test_database=# alter table orders rename to orders_simple;
 ALTER TABLE
